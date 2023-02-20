@@ -38,6 +38,7 @@ class MultiHeadAttention(nn.Module):
 
         self.norm_factor = 1 / math.sqrt(key_dim)  # See Attention is all you need
 
+        # 将不可训练的tensor转换为可以训练的parameter
         self.W_query = nn.Parameter(torch.Tensor(n_heads, input_dim, key_dim))
         self.W_key = nn.Parameter(torch.Tensor(n_heads, input_dim, key_dim))
         self.W_val = nn.Parameter(torch.Tensor(n_heads, input_dim, val_dim))
@@ -71,6 +72,9 @@ class MultiHeadAttention(nn.Module):
         assert q.size(2) == input_dim
         assert input_dim == self.input_dim, "Wrong embedding dimension of input"
 
+        # flatten操作
+        # hflat(batch_size * graph_size, input_dim)
+        # qflat(batch_size * n_query, input_dim)
         hflat = h.contiguous().view(-1, input_dim)
         qflat = q.contiguous().view(-1, input_dim)
 
@@ -153,6 +157,7 @@ class Normalization(nn.Module):
 
 class MultiHeadAttentionLayer(nn.Sequential):
 
+    # multihead attention + FF
     def __init__(
             self,
             n_heads,
@@ -169,6 +174,7 @@ class MultiHeadAttentionLayer(nn.Sequential):
                 )
             ),
             Normalization(embed_dim, normalization),
+            # FF层 linear-relu-linear
             SkipConnection(
                 nn.Sequential(
                     nn.Linear(embed_dim, feed_forward_hidden),
@@ -205,6 +211,7 @@ class GraphAttentionEncoder(nn.Module):
         assert mask is None, "TODO mask not yet supported!"
 
         # Batch multiply to get initial embeddings of nodes
+
         h = self.init_embed(x.view(-1, x.size(-1))).view(*x.size()[:2], -1) if self.init_embed is not None else x
 
         h = self.layers(h)

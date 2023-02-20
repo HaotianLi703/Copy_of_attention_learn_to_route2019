@@ -59,6 +59,7 @@ class TSPDataset(Dataset):
 
         self.data_set = []
         if filename is not None:
+            # 判断输入的filename的正确性
             assert os.path.splitext(filename)[1] == '.pkl'
 
             with open(filename, 'rb') as f:

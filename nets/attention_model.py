@@ -132,6 +132,8 @@ class AttentionModel(nn.Module):
         if self.checkpoint_encoder and self.training:  # Only checkpoint if we need gradients
             embeddings, _ = checkpoint(self.embedder, self._init_embed(input))
         else:
+            # _init_embed 将输入的（坐标）数据用全连接层embedding，embedding的维度为d_h = 128
+            # embedder即为GraphAttentionEncoder, 即为若干层MHA+FF组合的层
             embeddings, _ = self.embedder(self._init_embed(input))
 
         _log_p, pi = self._inner(input, embeddings)
