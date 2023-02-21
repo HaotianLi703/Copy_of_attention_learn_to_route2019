@@ -307,6 +307,7 @@ class AttentionModel(nn.Module):
             # Check if sampling went OK, can go wrong due to bug on GPU
             # See https://discuss.pytorch.org/t/bad-behavior-of-multinomial-function/10232
             while mask.gather(1, selected.unsqueeze(-1)).data.any():
+                # 如果选取到了被masked的值
                 print('Sampled bad values, resampling!')
                 selected = probs.multinomial(1).squeeze(1)
 
@@ -329,6 +330,7 @@ class AttentionModel(nn.Module):
             self.project_node_embeddings(embeddings[:, None, :, :]).chunk(3, dim=-1)
 
         # No need to rearrange key for logit as there is a single head
+        # 相当于每个head都有单独的linear projection参数
         fixed_attention_node_data = (
             self._make_heads(glimpse_key_fixed, num_steps),
             self._make_heads(glimpse_val_fixed, num_steps),
@@ -479,6 +481,7 @@ class AttentionModel(nn.Module):
 
         # Now projecting the glimpse is not needed since this can be absorbed into project_out
         # final_Q = self.project_glimpse(glimpse)
+        # output of masked multihead attention layer in the decoder
         final_Q = glimpse
         # Batch matrix multiplication to compute logits (batch_size, num_steps, graph_size)
         # logits = 'compatibility'
