@@ -23,6 +23,7 @@ class AttentionModelFixed(NamedTuple):
     This class allows for efficient indexing of multiple Tensors at once
     """
     node_embeddings: torch.Tensor
+    # embedding的平均过全连接层
     context_node_projected: torch.Tensor
     glimpse_key: torch.Tensor
     glimpse_val: torch.Tensor
@@ -238,10 +239,11 @@ class AttentionModel(nn.Module):
         # Perform decoding steps
         i = 0
         while not (self.shrink_size is None and state.all_finished()):
-
+            # shrink_size没有更新  一直是None
             if self.shrink_size is not None:
                 unfinished = torch.nonzero(state.get_finished() == 0)
                 if len(unfinished) == 0:
+                    # 若所有节点都finished了
                     break
                 unfinished = unfinished[:, 0]
                 # Check if we can shrink by at least shrink_size and if this leaves at least 16
@@ -315,11 +317,14 @@ class AttentionModel(nn.Module):
     def _precompute(self, embeddings, num_steps=1):
 
         # The fixed context projection of the graph embedding is calculated only once for efficiency
+        # graph embedding是所有node embedding的平均（即在第一维平均）
         graph_embed = embeddings.mean(1)
         # fixed context = (batch_size, 1, embed_dim) to make broadcastable with parallel timesteps
+        # W_Q对应h_bar的那部分
         fixed_context = self.project_fixed_context(graph_embed)[:, None, :]
 
         # The projection of the node embeddings for the attention is calculated once up front
+        # 将张量在最后一维分为3块
         glimpse_key_fixed, glimpse_val_fixed, logit_key_fixed = \
             self.project_node_embeddings(embeddings[:, None, :, :]).chunk(3, dim=-1)
 
@@ -346,7 +351,8 @@ class AttentionModel(nn.Module):
 
     def _get_log_p(self, fixed, state, normalize=True):
 
-        # Compute query = context node embedding
+        a = self.project_step_context(self._get_parallel_step_context(fixed.node_embeddings, state))
+        # Compute query = context node embedding q_(c) = W_Q * h_(c)
         query = fixed.context_node_projected + \
                 self.project_step_context(self._get_parallel_step_context(fixed.node_embeddings, state))
 
